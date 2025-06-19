@@ -1,5 +1,9 @@
 import React from 'react';
-import { useDevAccount } from '../services/x402Client';
+// import { useDevAccount } from '../services/x402Client';
+
+const useDevAccount = () => {
+  return null;
+}
 
 interface DevModeToggleProps {
   enabled: boolean;

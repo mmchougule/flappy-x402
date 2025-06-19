@@ -6,7 +6,8 @@ import { SetupGuide } from "./components/SetupGuide";
 import { DevModeToggle } from "./components/DevModeToggle";
 import { Confetti } from "./components/Confetti";
 import { useGameSession } from "./hooks/useGameSession";
-import { gameAPI, useDevAccount } from "./services/x402Client";
+import { gameAPI } from "./services/x402Client";
+import { useDynamicContext } from "@dynamic-labs/sdk-react-core";
 
 type GameState = "menu" | "playing" | "gameOver";
 
@@ -33,6 +34,7 @@ function App() {
     resetSession,
   } = useGameSession();
 
+  const { primaryWallet } = useDynamicContext();
   // Fetch server info on mount
   useEffect(() => {
     gameAPI.getHealth()
@@ -48,7 +50,7 @@ function App() {
     setDevMode(enabled);
     if (enabled) {
       // Dev mode uses the private key
-      useDevAccount();
+      // useDevAccount();
     }
     // When disabled, the wallet connection will take over
   };
@@ -145,10 +147,14 @@ function App() {
     error.includes("Please set VITE_PRIVATE_KEY")
   ));
 
+  if (!primaryWallet) {
+    return <div>Please connect your wallet to play the game.</div>;
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-indigo-900 via-purple-800 to-purple-900 flex items-center justify-center p-4">
       {/* Dev Mode Toggle */}
-      <DevModeToggle enabled={devMode} onToggle={handleDevModeToggle} />
+      {/* <DevModeToggle enabled={devMode} onToggle={handleDevModeToggle} /> */}
       
       {/* Arcade Cabinet Container */}
       <div className="arcade-cabinet w-full max-w-5xl p-8 bg-gray-900">

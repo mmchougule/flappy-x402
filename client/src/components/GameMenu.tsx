@@ -1,7 +1,8 @@
 import React from "react";
 import type { PaymentStatus } from "../services/x402Client";
-import { WalletConnect } from "./WalletConnect";
-import { useWallet } from "../contexts/WalletContext";
+// import { WalletConnect } from "./WalletConnect";
+// import { useWallet } from "../contexts/WalletContext";
+import { useDynamicContext } from "@dynamic-labs/sdk-react-core";
 
 interface GameMenuProps {
   onPlayClick: () => void;
@@ -22,10 +23,11 @@ export function GameMenu({
   hasActiveGame,
   devMode = false,
 }: GameMenuProps) {
-  const { isConnected } = useWallet();
+  // const { isConnected } = useWallet();
+  const { primaryWallet } = useDynamicContext();
 
   // In dev mode or if wallet is connected, show game controls
-  const canPlay = devMode || isConnected;
+  const canPlay = devMode || primaryWallet;
 
   return (
     <div className="arcade-screen min-h-[600px] relative">
@@ -42,13 +44,6 @@ export function GameMenu({
             POWERED BY x402
           </div>
         </div>
-
-        {/* Wallet Connection Status - only show if not in dev mode */}
-        {!devMode && (
-          <div className="mb-8">
-            <WalletConnect />
-          </div>
-        )}
 
         {/* Dev mode indicator */}
         {devMode && (

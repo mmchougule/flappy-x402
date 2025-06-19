@@ -1,7 +1,8 @@
 import { useState, useCallback, useEffect } from "react";
 import { gameAPI, updateApiClientWithWallet } from "../services/x402Client";
 import type { GameSession, PaymentStatus } from "../services/x402Client";
-import { useWallet } from "../contexts/WalletContext";
+import { useDynamicContext } from "@dynamic-labs/sdk-react-core";
+// import { useWallet } from "../contexts/WalletContext";
 
 interface UseGameSessionReturn {
   session: GameSession | null;
@@ -22,12 +23,13 @@ export function useGameSession(): UseGameSessionReturn {
   const [isLoading, setIsLoading] = useState(false);
   const [hasActiveGame, setHasActiveGame] = useState(false);
   
-  const { isConnected, walletClient } = useWallet();
+  // const { isConnected, walletClient } = useWallet();
+  const { primaryWallet } = useDynamicContext();
 
   // Update API client when wallet connection changes
   useEffect(() => {
-    updateApiClientWithWallet(walletClient);
-  }, [walletClient]);
+    updateApiClientWithWallet(primaryWallet);
+  }, [primaryWallet]);
 
   const createSession = useCallback(async () => {
     try {
@@ -36,12 +38,12 @@ export function useGameSession(): UseGameSessionReturn {
       setPaymentStatus("processing");
 
       // Check if wallet is connected
-      if (!isConnected || !walletClient) {
+      if (!primaryWallet) {
         throw new Error("Please connect your wallet to play");
       }
 
       // Ensure API client has the latest wallet
-      updateApiClientWithWallet(walletClient);
+      updateApiClientWithWallet(primaryWallet);
 
       const newSession = await gameAPI.createSession();
       
@@ -74,7 +76,7 @@ export function useGameSession(): UseGameSessionReturn {
     } finally {
       setIsLoading(false);
     }
-  }, [isConnected, walletClient]);
+  }, [primaryWallet]);
 
   const continueGame = useCallback(async (score: number): Promise<number | null> => {
     try {
@@ -83,12 +85,12 @@ export function useGameSession(): UseGameSessionReturn {
       setPaymentStatus("processing");
 
       // Check if wallet is connected
-      if (!isConnected || !walletClient) {
+      if (!primaryWallet) {
         throw new Error("Please connect your wallet to continue");
       }
 
       // Ensure API client has the latest wallet
-      updateApiClientWithWallet(walletClient);
+      updateApiClientWithWallet(primaryWallet);
 
       const response = await gameAPI.continueGame(score);
       
@@ -126,7 +128,7 @@ export function useGameSession(): UseGameSessionReturn {
     } finally {
       setIsLoading(false);
     }
-  }, [isConnected, walletClient]);
+  }, [primaryWallet]);
 
   const submitScore = useCallback(async (score: number) => {
     if (!session) {

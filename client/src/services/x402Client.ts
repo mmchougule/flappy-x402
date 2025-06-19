@@ -1,40 +1,63 @@
+import type { Wallet } from "@dynamic-labs/sdk-react-core";
 import axios from "axios";
 import type { AxiosInstance } from "axios";
 import type { Hex, WalletClient } from "viem";
-import { privateKeyToAccount } from "viem/accounts";
+// import { privateKeyToAccount } from "viem/accounts";
 import { withPaymentInterceptor, decodeXPaymentResponse } from "x402-axios";
 
 // In production, use a wallet connector instead of private key
-const PRIVATE_KEY = import.meta.env.VITE_PRIVATE_KEY as Hex;
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:3001";
+// const PRIVATE_KEY = import.meta.env.VITE_PRIVATE_KEY as Hex;
+const VITE_API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:3001";
+
+console.log("🔑 API base URL:", VITE_API_BASE_URL);
 
 // Create account from private key (for development only)
-const devAccount = PRIVATE_KEY && PRIVATE_KEY !== "0xYOUR_PRIVATE_KEY_HERE" 
-  ? privateKeyToAccount(PRIVATE_KEY) 
-  : null;
+// const devAccount = PRIVATE_KEY && PRIVATE_KEY !== "0xYOUR_PRIVATE_KEY_HERE" 
+//   ? privateKeyToAccount(PRIVATE_KEY) 
+//   : null;
 
-if (devAccount) {
-  console.log("⚠️ Development private key detected. Use wallet connection for production!");
-}
+// if (devAccount) {
+//   console.log("⚠️ Development private key detected. Use wallet connection for production!");
+// }
 
-// Base axios instance without payment interceptor
-const baseApiClient = axios.create({
-  baseURL: API_BASE_URL,
-  headers: {
-    "Content-Type": "application/json",
-  },
+// Create base API client
+const baseApiClient: AxiosInstance = axios.create({
+  baseURL: VITE_API_BASE_URL,
 });
 
-// This will be set dynamically based on wallet connection
-let apiClient: AxiosInstance = baseApiClient;
+// Keep track of current wallet and API client
 let currentWalletAddress: string | null = null;
+let apiClient: AxiosInstance = baseApiClient;
 
 // Function to update the API client with a wallet client
-export function updateApiClientWithWallet(walletClient: WalletClient | null) {
-  if (walletClient && walletClient.account) {
-    // x402-axios expects the wallet client to have an account
-    apiClient = withPaymentInterceptor(baseApiClient, walletClient as any);
-    currentWalletAddress = walletClient.account.address;
+export function updateApiClientWithWallet(wallet: Wallet | null) {
+  if (wallet) {
+    // Create a wallet adapter that x402-axios expects
+    const walletAdapter = {
+      address: wallet.address as Hex,
+      async signTypedData(domain: any, types: any, value: any) {
+        try {
+          // Convert the typed data to a string message
+          const message = JSON.stringify({
+            domain,
+            types,
+            message: value,
+            primaryType: 'PaymentRequest'
+          });
+          
+          // Use the basic signMessage method
+          const signature = await wallet.signMessage(message);
+          if (!signature) throw new Error('Failed to sign message');
+          return signature;
+        } catch (error) {
+          console.error('Failed to sign message:', error);
+          throw error;
+        }
+      }
+    };
+
+    apiClient = withPaymentInterceptor(baseApiClient, walletAdapter as any);
+    currentWalletAddress = wallet.address;
     console.log("💳 API client updated with wallet:", currentWalletAddress);
   } else {
     // No wallet connected - reset to base client
@@ -45,13 +68,13 @@ export function updateApiClientWithWallet(walletClient: WalletClient | null) {
 }
 
 // Function to update with dev account (only for development)
-export function useDevAccount() {
-  if (devAccount) {
-    apiClient = withPaymentInterceptor(baseApiClient, devAccount);
-    currentWalletAddress = devAccount.address;
-    console.log("🔧 Using dev account:", devAccount.address);
-  }
-}
+// export function useDevAccount() {
+//   if (devAccount) {
+//     apiClient = withPaymentInterceptor(baseApiClient, devAccount);
+//     currentWalletAddress = devAccount.address;
+//     console.log("🔧 Using dev account:", devAccount.address);
+//   }
+// }
 
 // Legacy functions for backward compatibility
 export function updateApiClientWithSigner() {
@@ -60,6 +83,11 @@ export function updateApiClientWithSigner() {
 
 export function updateApiClient() {
   console.warn("⚠️ updateApiClient is deprecated. Wallet is now handled automatically.");
+}
+
+// Export the current API client
+export function getApiClient(): AxiosInstance {
+  return apiClient;
 }
 
 // API endpoints
@@ -73,7 +101,7 @@ export const gameAPI = {
   // Create a new game session (requires payment)
   createSession: async () => {
     console.log("🎮 Creating game session...");
-    console.log("📍 API URL:", API_BASE_URL);
+    console.log("📍 API URL:", VITE_API_BASE_URL);
     console.log("💳 Current wallet:", currentWalletAddress || "None");
     
     if (!currentWalletAddress) {
@@ -130,7 +158,7 @@ export const gameAPI = {
   // Pay to continue (requires $1 payment) - Pay to win!
   continueGame: async (score: number) => {
     console.log("💰 PAY TO WIN MODE ACTIVATED!");
-    console.log("📍 API URL:", API_BASE_URL);
+    console.log("📍 API URL:", VITE_API_BASE_URL);
     console.log("💳 Current wallet:", currentWalletAddress || "None");
     console.log("🎮 Continuing with score:", score);
     
